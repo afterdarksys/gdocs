@@ -7,7 +7,7 @@ index 0. Does not interpret Markdown on import; that conversion is Drive's.
 
 from __future__ import annotations
 
-from gdocs.drive_ops import open_drive, resolve
+from gdocs.drive_ops import abandon, check_title, create_file, open_drive, resolve
 from gdocs.errors import GdocsError
 from gdocs.extract import (
     append_location,
@@ -73,6 +73,32 @@ def _batch(creds, document_id: str, requests: list[dict]) -> dict:
     return services.execute(
         _documents(creds).documents().batchUpdate(documentId=document_id, body={"requests": requests})
     )
+
+
+def create(name: str, text: str | None = None) -> dict:
+    """Blank document. Optional text is inserted at the API end index, never index 0."""
+
+    title = check_title(name)
+    if text is not None:
+        if not isinstance(text, str) or text == "":
+            raise GdocsError("refusing to append empty text")
+        if len(text) > 50000:
+            raise GdocsError("text exceeds 50000 characters")
+    row = create_file("doc", title)
+    if text is None:
+        return row
+    try:
+        from gdocs import services
+
+        creds, _drive = open_drive(write=True)
+        loaded = services.execute(
+            _documents(creds).documents().get(documentId=row["id"], includeTabsContent=True)
+        )
+        location = append_location(loaded)
+        _batch(creds, row["id"], [{"insertText": {"location": location, "text": text}}])
+    except Exception as exc:
+        abandon(row["id"], exc)
+    return row
 
 
 def _documents(creds):

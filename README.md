@@ -56,6 +56,21 @@ gdocs sheet import rows.csv --into FILE --tab Leads --replace
 gdocs present edit FILE replace OLD NEW
 gdocs present edit FILE add-slide --title Title --body "Slide text"
 gdocs present export FILE pptx ./deck.pptx
+
+gdocs doc create --name Notes
+gdocs doc create --name Notes --text "First paragraph"
+gdocs sheet create --name Leads --columns name,email,phone
+gdocs sheet create --name Leads --columns name,email,phone --values '{"name":"Ryan","email":"ryan@foo.com","phone":"55555555"}'
+gdocs sheet update FILE --tab Leads --append --values '{"name":"Ada","email":"ada@example.com","phone":"555"}'
+gdocs sheet import rows.json --name Leads
+gdocs present create --name Deck
+gdocs present create --name Deck --deck deck.yaml
+gdocs present edit FILE set-slide --slide 1 --title Hello --body "Slide text" --notes "Say this"
+gdocs present edit FILE add-slide --title Title --body "Slide text" --notes "Say this"
+gdocs present import deck.yaml --name Deck
+gdocs present export FILE yaml ./deck.yaml
+gdocs convert notes.docx ./notes.pdf
+gdocs convert notes.pdf ./notes.docx --keep
 ```
 
 `find` matches the file name. `search` matches the body, then prints a short local snippet.
@@ -68,7 +83,15 @@ Docs export as pdf, docx, txt, html, or md. Sheets export as xlsx, csv, pdf, or 
 
 Import creates a new Google file by uploading through Drive. A Markdown file is uploaded as plain text and converted to a Google Doc. This tool does not parse Markdown.
 
-`gdocs sheet import rows.csv --into FILE --replace` parses the CSV locally and replaces one tab in a spreadsheet that already exists. `--replace` is required with `--into`. An `.xlsx` import always creates a new spreadsheet.
+`gdocs sheet import rows.csv --into FILE --replace` parses the CSV locally and replaces one tab in a spreadsheet that already exists. `--replace` is required with `--into`. An `.xlsx` import always creates a new spreadsheet. `gdocs sheet import rows.json --name Leads` creates a new spreadsheet from JSON records. JSON with `--into` is refused.
+
+`gdocs convert IN OUT` imports through Drive and exports another format. Docs convert among docx, md, txt, html, and pdf. Sheets convert among csv, xlsx, pdf, and ods. Slides convert among pptx, pdf, and txt. The same suffix is refused. The intermediate Google file is trashed unless you pass `--keep`. If that trash fails, the command still exits 0 and the result includes the leftover file id.
+
+A PDF import is real but lossy. Drive embeds the PDF in a Doc. Text in a later docx or txt export is whatever Drive extracted. docx to pdf is the clean path. ods stays export-only.
+
+`gdocs sheet create` writes values as RAW, so a phone number and `=1+1` stay literal. Formulas go through `sheet update --formula`. `--tab` renames the first sheet after the values are written.
+
+`gdocs present import` and `present export json|yaml|yml` use a local slide deck, not a Drive export. The write shape is a title plus slides of title, body, and notes. An all-digit slide id is a 1-based index. Export is lossy for layouts that are not title and body. JSON and YAML are slide decks, not convert pairs.
 
 Tags live in the Drive file property `gdocs_tags`. They are not Workspace labels. Each tag is stored between commas, so a search for `q1` does not match `q10`.
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gdocs.drive_ops import open_drive, resolve
+from gdocs.drive_ops import abandon, check_title, create_file, open_drive, resolve
 from gdocs.errors import GdocsError
 from gdocs.filesafe import check_import_file, read_text_input
 from gdocs.grid import (
@@ -19,15 +19,18 @@ from gdocs.grid import (
     column_index,
     column_letter,
     content_limit,
+    check_tab_title,
+    grid_from_records,
     header_list,
     matching_sheet_rows,
     objects_to_grid,
     parse_cell,
+    parse_columns,
     parse_csv_text,
     parse_json_payload,
     parse_sets,
-    parse_value_grid,
     parse_where,
+    rows_for_header,
     plan_basic_filter,
     plan_copy_column,
     plan_delete,
@@ -491,7 +494,7 @@ def _payload(values: str | None, json_path: str | None):
     if (values is None) == (json_path is None):
         raise GdocsError("pass one of --values or --json")
     if values is not None:
-        return "grid", parse_value_grid(values)
+        return parse_json_payload(values)
     return parse_json_payload(read_text_input(json_path or "", MAX_VALUES_BYTES))
 
 
@@ -636,3 +639,91 @@ def _require_total(response: dict):
     if not total:
         raise GdocsError("edit changed nothing")
     return total
+
+
+def create_sheet(name, columns, values=None, json_path=None, tab=None) -> dict:
+    """Create a spreadsheet. Values are written RAW, so phones and ``=1+1`` stay literal.
+
+    Formulas go through ``sheet update --formula``. ``--tab`` renames the first
+    sheet after the values are written.
+    """
+
+    headers = parse_columns(columns)
+    tab_title = check_tab_title(tab) if tab is not None else None
+    title = check_title(name)
+    if values is None and json_path is None:
+        grid = [headers]
+    else:
+        kind, payload = _payload(values, json_path)
+        grid = [headers] + _rows_under_header(headers, kind, payload)
+    assert_cell_budget(grid)
+    row = create_file("sheet", title)
+    try:
+        _fill_new_sheet(row["id"], grid, tab_title)
+    except Exception as exc:
+        abandon(row["id"], exc)
+    return row
+
+
+def import_records(path, *, name=None, tab=None) -> dict:
+    """Create a spreadsheet from JSON records. Values are written RAW."""
+
+    source = Path(path)
+    if source.suffix.lower() != ".json":
+        raise GdocsError("json import needs a .json file")
+    tab_title = check_tab_title(tab) if tab is not None else None
+    check_import_file(source)
+    kind, payload = parse_json_payload(read_text_input(str(source), MAX_VALUES_BYTES))
+    grid = grid_from_records(kind, payload)
+    assert_cell_budget(grid)
+    title = check_title(name or source.stem)
+    row = create_file("sheet", title)
+    try:
+        _fill_new_sheet(row["id"], grid, tab_title)
+    except Exception as exc:
+        abandon(row["id"], exc)
+    return row
+
+
+def _rows_under_header(headers, kind, payload):
+    if kind == "objects":
+        return rows_for_header(headers, payload)
+    width = len(headers)
+    rows = []
+    for row in payload:
+        if len(row) > width:
+            raise GdocsError("row is wider than the columns")
+        rows.append(list(row) + [""] * (width - len(row)))
+    return rows
+
+
+def _fill_new_sheet(spreadsheet_id: str, grid, tab: str | None) -> None:
+    from gdocs import services
+
+    creds, _drive = open_drive(write=True)
+    book = services.execute(
+        _sheets(creds).spreadsheets().get(spreadsheetId=spreadsheet_id, fields=_META_FIELDS)
+    )
+    sheet = _pick_tab(book, None)
+    response = _values_call(
+        creds,
+        "update",
+        spreadsheet_id,
+        qualify_range(sheet["title"], "A1"),
+        "RAW",
+        {"values": grid},
+    )
+    _require_cells(response)
+    if tab is not None and tab != sheet["title"]:
+        _batch(
+            creds,
+            spreadsheet_id,
+            [
+                {
+                    "updateSheetProperties": {
+                        "properties": {"sheetId": sheet["sheetId"], "title": tab},
+                        "fields": "title",
+                    }
+                }
+            ],
+        )

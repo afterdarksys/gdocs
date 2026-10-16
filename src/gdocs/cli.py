@@ -48,6 +48,16 @@ def build_parser() -> argparse.ArgumentParser:
         _add_sheet(nouns, name, common, tab)
     for name in ("present", "presents", "slides"):
         _add_editor(nouns, name, "present", common)
+    convert = nouns.add_parser(
+        "convert",
+        parents=[common],
+        help="import a file and export it as another format",
+    )
+    convert.add_argument("source")
+    convert.add_argument("dest")
+    convert.add_argument("--force", action="store_true")
+    convert.add_argument("--keep", action="store_true")
+    convert.set_defaults(func=_cmd_convert, kind=None)
     return parser
 
 
@@ -56,6 +66,12 @@ def _add_editor(nouns: argparse._SubParsersAction, name: str, kind: str, common)
     parser.set_defaults(kind=kind)
     verbs = parser.add_subparsers(dest="verb", required=True)
     _add_list_find_search(verbs, kind, common)
+    created = _leaf(verbs, "create", [common], _cmd_create, kind)
+    created.add_argument("--name", required=True)
+    if kind == "doc":
+        created.add_argument("--text", default=None)
+    else:
+        created.add_argument("--deck", default=None)
 
     view = _leaf(verbs, "view", [common], _cmd_view, kind)
     view.add_argument("target")
@@ -76,6 +92,12 @@ def _add_editor(nouns: argparse._SubParsersAction, name: str, kind: str, common)
         slide = _leaf(edits, "add-slide", [common], _cmd_add_slide, kind)
         slide.add_argument("--title", default=None)
         slide.add_argument("--body", default=None)
+        slide.add_argument("--notes", default=None)
+        setter = _leaf(edits, "set-slide", [common], _cmd_set_slide, kind)
+        setter.add_argument("--slide", required=True)
+        setter.add_argument("--title", default=None)
+        setter.add_argument("--body", default=None)
+        setter.add_argument("--notes", default=None)
 
     tag = _leaf(verbs, "tag", [common], _cmd_tag, kind)
     tag.add_argument("target")
@@ -100,6 +122,11 @@ def _add_sheet(nouns: argparse._SubParsersAction, name: str, common, tab) -> Non
     verbs = parser.add_subparsers(dest="verb", required=True)
     _add_list_find_search(verbs, "sheet", common)
     _add_export(verbs, "sheet", common)
+    created = _leaf(verbs, "create", [common, tab], _cmd_sheet_create, "sheet")
+    created.add_argument("--name", required=True)
+    created.add_argument("--columns", required=True)
+    created.add_argument("--values", default=None)
+    created.add_argument("--json", dest="json_path", default=None)
 
     view = _leaf(verbs, "view", [common, tab], _cmd_sheet_view, "sheet")
     view.add_argument("target")
@@ -309,10 +336,28 @@ def _cmd_append(args):
     return append_text(args.target, args.text)
 
 
+def _cmd_create(args):
+    if args.kind == "doc":
+        from gdocs.doc_ops import create
+
+        return create(args.name, text=args.text)
+    from gdocs.deck import load_deck
+    from gdocs.slide_ops import create
+
+    deck = load_deck(args.deck) if args.deck else None
+    return create(args.name, deck=deck)
+
+
 def _cmd_add_slide(args):
     from gdocs.slide_ops import add_slide
 
-    return add_slide(args.target, args.title, args.body)
+    return add_slide(args.target, args.title, args.body, notes=args.notes)
+
+
+def _cmd_set_slide(args):
+    from gdocs.slide_ops import set_slide
+
+    return set_slide(args.target, args.slide, args.title, args.body, args.notes)
 
 
 def _cmd_tag(args):
@@ -347,14 +392,24 @@ def _cmd_share(args):
 
 
 def _cmd_export(args):
+    if args.kind == "present" and args.fmt in {"json", "yaml", "yml"}:
+        from gdocs.slide_ops import export_deck
+
+        return export_deck(args.target, args.fmt, args.dest, args.force)
     from gdocs.drive_ops import export_file
 
     return export_file(args.kind, args.target, args.fmt, args.dest, args.force)
 
 
 def _cmd_import(args):
+    from pathlib import Path
+
+    path = args.path
+    suffix = Path(path).suffix.lower()
     into = getattr(args, "into", None)
     replace = bool(getattr(args, "replace", False))
+    if args.kind == "sheet" and suffix == ".json" and (into or replace):
+        raise GdocsError("json import creates a new spreadsheet")
     if replace and not into:
         raise GdocsError("--replace needs --into")
     if into:
@@ -362,10 +417,36 @@ def _cmd_import(args):
             raise GdocsError("--replace is required")
         from gdocs.sheet_ops import import_csv
 
-        return import_csv(into, args.path, tab=getattr(args, "tab", None), replace=True)
+        return import_csv(into, path, tab=getattr(args, "tab", None), replace=True)
+    if args.kind == "sheet" and suffix == ".json":
+        from gdocs.sheet_ops import import_records
+
+        return import_records(path, name=args.name, tab=getattr(args, "tab", None))
+    if args.kind == "present" and suffix in {".json", ".yaml", ".yml"}:
+        from gdocs.slide_ops import import_deck
+
+        return import_deck(path, name=args.name)
     from gdocs.drive_ops import import_file
 
-    return import_file(args.kind, args.path, name=args.name)
+    return import_file(args.kind, path, name=args.name)
+
+
+def _cmd_convert(args):
+    from gdocs.convert import convert
+
+    return convert(args.source, args.dest, args.force, args.keep)
+
+
+def _cmd_sheet_create(args):
+    from gdocs.sheet_ops import create_sheet
+
+    return create_sheet(
+        args.name,
+        args.columns,
+        values=args.values,
+        json_path=args.json_path,
+        tab=args.tab,
+    )
 
 
 def _cmd_sheet_view(args):

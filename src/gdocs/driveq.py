@@ -55,9 +55,10 @@ IMPORT_SOURCE = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "pdf": "application/pdf",
 }
 IMPORT_KIND = {
-    "doc": {"md", "txt", "html", "docx"},
+    "doc": {"md", "txt", "html", "docx", "pdf"},
     "sheet": {"xlsx", "csv"},
     "present": {"pptx"},
 }

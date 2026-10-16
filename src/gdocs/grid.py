@@ -363,6 +363,77 @@ def objects_to_grid(headers: list[str], objects: list[dict]) -> list[list[str]]:
     return rows
 
 
+def check_column_name(name) -> str:
+    if not isinstance(name, str) or not name.strip():
+        raise GdocsError("column name is missing")
+    if name != name.strip() or len(name) > 200 or any(ord(char) < 32 or ord(char) == 127 for char in name):
+        raise GdocsError("column name is invalid")
+    return name
+
+
+def parse_columns(text: str) -> list[str]:
+    if not isinstance(text, str) or not text.strip():
+        raise GdocsError("columns are missing")
+    tokens = [part.strip() for part in text.split(",")]
+    if len(tokens) > 200:
+        raise GdocsError("too many columns")
+    names = [check_column_name(token) for token in tokens]
+    if len(names) != len(set(names)):
+        raise GdocsError("duplicate header names")
+    return names
+
+
+def check_tab_title(name) -> str:
+    if not isinstance(name, str) or not name.strip():
+        raise GdocsError("tab name is missing")
+    if name != name.strip() or len(name) > 100 or any(ord(char) < 32 or ord(char) == 127 for char in name):
+        raise GdocsError("tab name is invalid")
+    return name
+
+
+def columns_from_objects(objects: list) -> list[str]:
+    headers: list[str] = []
+    seen: set[str] = set()
+    if not objects:
+        raise GdocsError("sheet has no header row")
+    for obj in objects:
+        if not isinstance(obj, dict):
+            raise GdocsError("json rows must be objects")
+        for key in obj:
+            if key in seen:
+                continue
+            name = check_column_name(key)
+            if len(headers) >= 200:
+                raise GdocsError("too many columns")
+            seen.add(key)
+            headers.append(name)
+    if not headers:
+        raise GdocsError("sheet has no header row")
+    return headers
+
+
+def rows_for_header(headers: list[str], objects: list) -> list[list[str]]:
+    return objects_to_grid(headers, objects)
+
+
+def grid_from_records(kind: str, payload) -> list[list[str]]:
+    if kind == "objects":
+        headers = columns_from_objects(payload)
+        return [headers] + objects_to_grid(headers, payload)
+    if not payload or not payload[0]:
+        raise GdocsError("sheet has no header row")
+    headers = [check_column_name(cell) for cell in payload[0]]
+    if len(headers) != len(set(headers)):
+        raise GdocsError("duplicate header names")
+    rows = [headers]
+    width = len(headers)
+    for row in payload[1:]:
+        if len(row) > width:
+            raise GdocsError("row is wider than the columns")
+        rows.append(list(row) + [""] * (width - len(row)))
+    return rows
+
+
 def records_from_grid(grid: list[list[str]]) -> list[dict[str, str]]:
     if not grid:
         return []

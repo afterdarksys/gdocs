@@ -1,4 +1,4 @@
-"""Drive listing, name resolution, tags, sharing, export, and import.
+"""Drive listing, name resolution, tags, sharing, export, import, and blank files.
 
 Threats: user text is escaped before it is placed in a Drive query. Writes
 require the full drive scope. A public share is planned before a client is
@@ -11,11 +11,13 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from typing import NoReturn
 
 from gdocs.driveq import (
     FILE_FIELDS,
     KIND_MIME,
     LIST_FIELDS,
+    _ID,
     build_list_query,
     check_tag,
     export_mime,
@@ -328,3 +330,54 @@ def _import_name(name: str | None, source: Path) -> str:
     if len(title) > 200 or any(ord(char) < 32 or ord(char) == 127 for char in title):
         raise GdocsError("import name is invalid")
     return title
+
+
+def check_title(name) -> str:
+    if not isinstance(name, str) or not name.strip():
+        raise GdocsError("name is missing")
+    if len(name) > 200 or any(ord(char) < 32 or ord(char) == 127 for char in name):
+        raise GdocsError("name is invalid")
+    return name
+
+
+def create_file(kind: str, name: str) -> dict:
+    """Create an empty Google editor file. The title is checked before a client is built."""
+
+    title = check_title(name)
+    from gdocs import services
+
+    _creds, drive = open_drive(write=True)
+    created = services.execute(
+        drive.files().create(
+            body={"name": title, "mimeType": KIND_MIME[kind]},
+            fields=FILE_FIELDS,
+            supportsAllDrives=True,
+        )
+    )
+    row = file_row(created)
+    if not _ID.fullmatch(row.get("id") or ""):
+        raise GdocsError("created file id is invalid")
+    return row
+
+
+def trash_file(file_id: str) -> None:
+    if not _ID.fullmatch(file_id or ""):
+        raise GdocsError("file id is invalid")
+    from gdocs import services
+
+    _creds, drive = open_drive(write=True)
+    services.execute(
+        drive.files().update(
+            fileId=file_id,
+            body={"trashed": True},
+            supportsAllDrives=True,
+        )
+    )
+
+
+def abandon(file_id: str, exc: BaseException) -> NoReturn:
+    try:
+        trash_file(file_id)
+    except Exception:
+        raise GdocsError(f"{exc}; leftover file {file_id}") from None
+    raise exc from None

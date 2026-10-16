@@ -109,3 +109,24 @@ def test_sheet_names_budget_and_limits():
         assert_cell_budget([["x"] * 200 for _ in range(250)] + [["extra"]])
     assert list_limit(None) == 50
     assert content_limit(None) == 20000
+
+
+def test_column_lists_and_record_grids():
+    from gdocs.grid import (
+        columns_from_objects,
+        grid_from_records,
+        parse_columns,
+        rows_for_header,
+    )
+
+    assert parse_columns(" name, email") == ["name", "email"]
+    with pytest.raises(GdocsError, match="duplicate header names"):
+        parse_columns("name,name")
+    with pytest.raises(GdocsError, match="column name is missing"):
+        parse_columns("name,")
+    with pytest.raises(GdocsError, match="sheet has no header row"):
+        columns_from_objects([{}])
+    assert grid_from_records("grid", [["name", "email"]]) == [["name", "email"]]
+    with pytest.raises(GdocsError, match="row is wider than the columns"):
+        grid_from_records("grid", [["name"], ["a", "b"]])
+    assert rows_for_header(["name"], [{"name": "Ada"}]) == [["Ada"]]
