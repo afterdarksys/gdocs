@@ -38,7 +38,7 @@ def replace_text(target: str, old: str, new: str) -> dict:
     creds, drive = open_drive(write=True)
     meta = resolve(drive, "doc", target)
     from gdocs import services
-    loaded = services.execute(_documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True))
+    loaded = services.execute(_documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True, suggestionsViewMode="SUGGESTIONS_INLINE"))
     response = _batch(creds, meta["id"], [request], revision=_revision(loaded))
     changed = require_text_changes(response)
     return {"id": meta["id"], "occurrencesChanged": changed}
@@ -51,7 +51,7 @@ def append_text(target: str, text: str) -> dict:
         raise GdocsError("text exceeds 50000 characters")
     creds, drive = open_drive(write=True)
     meta = resolve(drive, "doc", target)
-    document = _documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True)
+    document = _documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True, suggestionsViewMode="SUGGESTIONS_INLINE")
     from gdocs import services
 
     loaded = services.execute(document)
@@ -65,7 +65,7 @@ def _load(target: str, *, write: bool) -> dict:
 
     creds, drive = open_drive(write=write)
     meta = resolve(drive, "doc", target)
-    request = _documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True)
+    request = _documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True, suggestionsViewMode="PREVIEW_WITHOUT_SUGGESTIONS")
     return services.execute(request)
 
 

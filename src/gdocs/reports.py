@@ -118,7 +118,7 @@ def update_section(target, heading, markdown, preview):
     from gdocs import services
     creds, drive = open_drive(write=not preview); meta = resolve(drive,'doc',target)
     docs = services.build('docs','v1',creds).documents()
-    document = services.execute(docs.get(documentId=meta['id'],includeTabsContent=True))
+    document = services.execute(docs.get(documentId=meta['id'],includeTabsContent=True,suggestionsViewMode='SUGGESTIONS_INLINE'))
     tab, start, end = section_range(document,heading)
     if start > end: raise GdocsError('add an empty paragraph below the section heading before updating it')
     requests = compile_section(markdown,start,tab)

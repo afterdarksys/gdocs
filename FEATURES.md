@@ -135,3 +135,25 @@ files, imports, and reports now use the active workspace folder and require its
 preview to apply. `--kind sheet|present|folder` selects other types. Moves check
 capabilities; folder cycles and cross-drive folder moves are refused. Google's
 permissions and organization policies remain authoritative for moves.
+
+## Review inbox and suggestion previews
+
+`gdocs inbox --output plain` scans the 50 most recently modified Docs, Sheets and
+Slides within the current scope, showing unreviewed/changed files and unresolved
+comments. Use `--kind doc`, `--limit 100`, `--recursive`, `--details` (comment threads
+and content diffs), or `--all` (include clear items). The result reports truncation
+and per-file comment/read errors, so failed scans do not appear clear. This is a
+bounded polling inbox, not a server-side assignment or notification feed.
+
+After reading, `gdocs review mark FILE` explicitly acknowledges the current remote
+version locally and refreshes its `last-review` snapshot. It does not resolve
+comments. For sheets use `--kind sheet --tab Findings --key finding_id`; content
+comparisons cover that tab while modification status is file-wide. Slides use
+metadata acknowledgement. Each profile has independent review state.
+
+`gdocs doc suggestions FILE --view current|proposed|changes` provides read-only
+views of the text without suggestions, text with all suggestions hypothetically
+accepted, or heading-level differences plus suggestion metadata (including style
+suggestions). Views are labeled and revision mismatches fail. Ordinary document
+reads now explicitly exclude suggestions; index-based writes use inline suggestion
+indexes. Suggestion acceptance/rejection is not performed by these commands.

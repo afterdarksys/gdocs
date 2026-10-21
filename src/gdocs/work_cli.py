@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_reviews(nouns, common)
     register_folders(nouns, common)
     register_profiles(nouns, common)
     register_workspaces(nouns, common)
@@ -24,6 +25,8 @@ def configure(a):
 
 def register_editor(verbs, kind, common):
     if kind == 'doc':
+        p = leaf(verbs, 'suggestions', common, read_suggestions)
+        p.add_argument('target'); p.add_argument('--view', choices=['current','proposed','changes'], default='changes')
         p = leaf(verbs, 'read', common, read_doc)
         p.add_argument('target')
         p.add_argument('--section')
@@ -187,3 +190,26 @@ def folder_command(a):
     from gdocs.workspaces import active
     name, workspace = active()
     return {'workspace':name, 'folder':workspace.get('folder')}
+
+
+def register_reviews(nouns, common):
+    p = leaf(nouns, 'inbox', common, review_inbox)
+    p.add_argument('--kind', choices=['all','doc','sheet','present'], default='all')
+    p.add_argument('--recursive', action='store_true'); p.add_argument('--all', dest='include_clear', action='store_true')
+    p.add_argument('--details', action='store_true')
+    root = nouns.add_parser('review'); verbs = root.add_subparsers(dest='review_action', required=True)
+    p = leaf(verbs, 'mark', common, mark_review)
+    p.add_argument('target'); p.add_argument('--kind', choices=['doc','sheet','present'], default='doc')
+    p.add_argument('--tab'); p.add_argument('--key')
+
+def review_inbox(a):
+    from gdocs.reviews import inbox
+    return inbox(a.kind, a.limit if a.limit is not None else 50, a.recursive, a.include_clear, a.details)
+
+def mark_review(a):
+    from gdocs.reviews import mark
+    return mark(a.target,a.kind,a.tab,a.key)
+
+def read_suggestions(a):
+    from gdocs.reviews import suggestions
+    return suggestions(a.target,a.view)
