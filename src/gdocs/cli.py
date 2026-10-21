@@ -11,7 +11,7 @@ import sys
 
 from gdocs.errors import GdocsError, report_exception
 
-_OUTPUTS = ("table", "json", "ndjson", "csv")
+_OUTPUTS = ("table", "json", "ndjson", "csv", "plain")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,6 +58,8 @@ def build_parser() -> argparse.ArgumentParser:
     convert.add_argument("--force", action="store_true")
     convert.add_argument("--keep", action="store_true")
     convert.set_defaults(func=_cmd_convert, kind=None)
+    from gdocs.work_cli import register
+    register(nouns, common)
     return parser
 
 
@@ -65,6 +67,8 @@ def _add_editor(nouns: argparse._SubParsersAction, name: str, kind: str, common)
     parser = nouns.add_parser(name)
     parser.set_defaults(kind=kind)
     verbs = parser.add_subparsers(dest="verb", required=True)
+    from gdocs.work_cli import register_editor
+    register_editor(verbs, kind, common)
     _add_list_find_search(verbs, kind, common)
     created = _leaf(verbs, "create", [common], _cmd_create, kind)
     created.add_argument("--name", required=True)
@@ -120,6 +124,8 @@ def _add_sheet(nouns: argparse._SubParsersAction, name: str, common, tab) -> Non
     parser = nouns.add_parser(name)
     parser.set_defaults(kind="sheet")
     verbs = parser.add_subparsers(dest="verb", required=True)
+    from gdocs.work_cli import register_sheet
+    register_sheet(verbs, common, tab)
     _add_list_find_search(verbs, "sheet", common)
     _add_export(verbs, "sheet", common)
     created = _leaf(verbs, "create", [common, tab], _cmd_sheet_create, "sheet")

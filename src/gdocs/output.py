@@ -10,11 +10,14 @@ from typing import Any
 
 from gdocs.errors import GdocsError
 
-_FORMATS = {"table", "json", "ndjson", "csv"}
+_FORMATS = {"table", "json", "ndjson", "csv", "plain"}
 _CLIP = 40
 
 
 def choose_output(explicit: str | None, isatty: bool) -> str:
+    if explicit is None:
+        from gdocs.preferences import load
+        explicit = load().get("output")
     if explicit is None:
         return "table" if isatty else "json"
     if explicit not in _FORMATS:
@@ -30,6 +33,8 @@ def emit(data: Any, explicit: str | None, columns: list[str] | None = None) -> N
 def render(data: Any, fmt: str, columns: list[str] | None = None) -> str:
     if fmt not in _FORMATS:
         raise GdocsError("output must be table, json, ndjson, or csv")
+    if fmt == "plain":
+        return plain(data) + "\n"
     if isinstance(data, dict):
         if fmt == "json":
             return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
@@ -119,3 +124,11 @@ def _draw(rows: list[list[str]]) -> str:
     for row in rows:
         lines.append("  ".join(cell.ljust(widths[index]) for index, cell in enumerate(row)).rstrip())
     return "\n".join(lines) + "\n"
+
+
+def plain(data):
+    if isinstance(data, dict):
+        return "\n".join(f"{key}: {plain(value)}" for key, value in data.items())
+    if isinstance(data, list):
+        return "\n\n".join(f"Record {i}:\n{plain(value)}" for i, value in enumerate(data, 1)) or "No records."
+    return "" if data is None else str(data)
