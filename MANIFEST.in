@@ -1,0 +1,3 @@
+include build.sh uv.lock FEATURES.md BUILDING.md
+recursive-include tests *.py
+recursive-include bin *
