@@ -206,16 +206,19 @@ def _add_sheet(nouns: argparse._SubParsersAction, name: str, common, tab) -> Non
 
 def _add_list_find_search(verbs, kind: str, common) -> None:
     listing = _leaf(verbs, "list", [common], _cmd_list, kind)
+    listing.add_argument("--recursive", action="store_true")
     listing.add_argument("--query", default=None)
     listing.add_argument("--tag", default=None)
     listing.add_argument("--starred", action="store_true")
 
     find = _leaf(verbs, "find", [common], _cmd_find, kind)
+    find.add_argument("--recursive", action="store_true")
     find.add_argument("query")
     find.add_argument("--tag", default=None)
     find.add_argument("--starred", action="store_true")
 
     search = _leaf(verbs, "search", [common], _cmd_search, kind)
+    search.add_argument("--recursive", action="store_true")
     search.add_argument("text")
     search.add_argument("--snippets", type=int, default=5)
 
@@ -302,6 +305,7 @@ def _cmd_list(args):
 
     return list_files(
         args.kind,
+        recursive=args.recursive,
         name_contains=args.query,
         tag=args.tag,
         starred=args.starred,
@@ -312,13 +316,13 @@ def _cmd_list(args):
 def _cmd_find(args):
     from gdocs.drive_ops import find_files
 
-    return find_files(args.kind, args.query, tag=args.tag, starred=args.starred, limit=args.limit)
+    return find_files(args.kind, args.query, tag=args.tag, starred=args.starred, limit=args.limit, recursive=args.recursive)
 
 
 def _cmd_search(args):
     from gdocs.drive_ops import search_files
 
-    return search_files(args.kind, args.text, limit=args.limit, snippets=args.snippets)
+    return search_files(args.kind, args.text, limit=args.limit, snippets=args.snippets, recursive=args.recursive)
 
 
 def _cmd_view(args):

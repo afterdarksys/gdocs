@@ -35,13 +35,13 @@ def run(template, data_path, name=None, into=None, section=None, preview=False):
     rendered = '<!doctype html><html><body>' + parser().render(markdown) + '</body></html>'
     if preview: return {'markdown':markdown, 'html':rendered}
     if not name: raise GdocsError('new reports require --name')
-    from gdocs.drive_ops import open_drive, check_title
+    from gdocs.drive_ops import open_drive, check_title, _creation_parents
     from gdocs.driveq import KIND_MIME, FILE_FIELDS, file_row
     from gdocs import services
     from googleapiclient.http import MediaInMemoryUpload
     _, drive = open_drive(write=True)
     return file_row(services.execute(drive.files().create(
-        body={'name':check_title(name), 'mimeType':KIND_MIME['doc']},
+        body={'name':check_title(name), 'mimeType':KIND_MIME['doc'], **_creation_parents(drive)},
         media_body=MediaInMemoryUpload(rendered.encode(), mimetype='text/html'),
         fields=FILE_FIELDS, supportsAllDrives=True)))
 

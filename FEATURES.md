@@ -114,3 +114,24 @@ OAuth keychain entries, fallback token files, workspaces, snapshots and operatio
 An optional expected email is verified against Drive before named-profile writes;
 the account, profile and workspace are printed to stderr before writing. ADC is
 still selected by the process environment; profiles do not change its identity.
+
+## Folders and shared drives
+
+`gdocs drives` lists accessible shared drives and capabilities. Use a shared-drive
+root ID or any folder ID with `workspace create ... --folder ID`.
+`gdocs folder list [FOLDER] --recursive` lists descendants; `folder pwd` shows the
+workspace's current folder. `folder cd FOLDER_ID_OR_URL` changes that workspace's
+folder, and `folder cd ..` goes to its accessible parent. Aliases remain unchanged.
+`gdocs doc search "risk" --recursive` (also list/find for every editor type) searches
+all descendant folders of the active workspace, bounded to 1000 folders; shortcuts
+are not followed. Results are sorted globally by modification time before limiting.
+Incomplete API search results fail explicitly. Shared-drive folder searches use the
+specific drive corpus, with pagination.
+
+`gdocs folder create "Evidence" [--parent FOLDER]` creates a folder. New editor
+files, imports, and reports now use the active workspace folder and require its
+`canAddChildren` capability. Without a workspace they retain My Drive defaults.
+`gdocs folder move FILE --kind doc --to FOLDER --preview` previews a move; omit
+preview to apply. `--kind sheet|present|folder` selects other types. Moves check
+capabilities; folder cycles and cross-drive folder moves are refused. Google's
+permissions and organization policies remain authoritative for moves.

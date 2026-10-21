@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_folders(nouns, common)
     register_profiles(nouns, common)
     register_workspaces(nouns, common)
     register_evidence(nouns, common)
@@ -161,3 +162,28 @@ def profile_command(a):
     if a.profile_action == 'create': return profiles.create(a.name, a.email)
     if a.profile_action == 'use': return profiles.use(a.name)
     return profiles.listing()
+
+
+def register_folders(nouns, common):
+    root = nouns.add_parser('folder'); verbs = root.add_subparsers(dest='folder_action', required=True)
+    p = leaf(verbs, 'list', common, folder_command); p.add_argument('target', nargs='?'); p.add_argument('--recursive', action='store_true')
+    p = leaf(verbs, 'create', common, folder_command); p.add_argument('name'); p.add_argument('--parent')
+    p = leaf(verbs, 'cd', common, folder_command); p.add_argument('target')
+    leaf(verbs, 'pwd', common, folder_command)
+    p = leaf(verbs, 'move', common, folder_command); p.add_argument('target'); p.add_argument('--to', required=True)
+    p.add_argument('--kind', choices=['doc','sheet','present','folder'], default='doc'); p.add_argument('--preview', action='store_true')
+    leaf(nouns, 'drives', common, list_drives)
+
+def list_drives(a):
+    from gdocs.folders import shared_drives
+    return shared_drives()
+
+def folder_command(a):
+    from gdocs import folders
+    if a.folder_action == 'list': return folders.list_folder(a.target, a.recursive, a.limit)
+    if a.folder_action == 'create': return folders.create(a.name, a.parent)
+    if a.folder_action == 'cd': return folders.navigate(a.target)
+    if a.folder_action == 'move': return folders.move(a.target, a.to, a.kind, a.preview)
+    from gdocs.workspaces import active
+    name, workspace = active()
+    return {'workspace':name, 'folder':workspace.get('folder')}

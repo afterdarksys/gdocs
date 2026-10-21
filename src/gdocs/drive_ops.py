@@ -59,20 +59,20 @@ def open_drive(*, write: bool):
     return creds, drive
 
 
-def list_files(kind: str, *, name_contains: str | None = None, tag: str | None = None, starred: bool = False, limit: int | None = None) -> list[dict]:
+def list_files(kind: str, *, name_contains: str | None = None, tag: str | None = None, starred: bool = False, limit: int | None = None, recursive: bool = False) -> list[dict]:
     query = build_list_query(kind=kind, name_contains=name_contains, tag=tag, starred=starred)
-    rows, _drive = _collect(query, limit)
+    rows, _drive = _collect(query, limit, recursive=recursive)
     return rows
 
 
-def find_files(kind: str, name_contains: str, *, tag: str | None = None, starred: bool = False, limit: int | None = None) -> list[dict]:
-    return list_files(kind, name_contains=name_contains, tag=tag, starred=starred, limit=limit)
+def find_files(kind: str, name_contains: str, *, tag: str | None = None, starred: bool = False, limit: int | None = None, recursive: bool = False) -> list[dict]:
+    return list_files(kind, name_contains=name_contains, tag=tag, starred=starred, limit=limit, recursive=recursive)
 
 
-def search_files(kind: str, text: str, *, limit: int | None = None, snippets: int = 5) -> list[dict]:
+def search_files(kind: str, text: str, *, limit: int | None = None, snippets: int = 5, recursive: bool = False) -> list[dict]:
     cap = _snippet_cap(snippets)
     query = build_list_query(kind=kind, full_text=text)
-    rows, drive = _collect(query, limit)
+    rows, drive = _collect(query, limit, recursive=recursive)
     if cap:
         _fill_snippets(drive, rows, kind, text, cap)
     return rows
@@ -172,7 +172,7 @@ def import_file(kind: str, path: str, *, name: str | None = None) -> dict:
         media = MediaFileUpload(staged, mimetype=source_mime, resumable=False)
         created = services.execute(
             drive.files().create(
-                body={"name": title, "mimeType": target_mime},
+                body={"name": title, "mimeType": target_mime, **_creation_parents(drive)},
                 media_body=media,
                 fields=FILE_FIELDS,
                 supportsAllDrives=True,
@@ -184,37 +184,30 @@ def import_file(kind: str, path: str, *, name: str | None = None) -> dict:
             os.unlink(staged)
 
 
-def _collect(query: str, limit: int | None):
-    from gdocs import services
-
-    from gdocs.workspaces import scope
-    query = scope(query)
+def _collect(query: str, limit: int | None, recursive: bool = False):
+    from gdocs.workspaces import active
+    from gdocs import folders
     cap = list_limit(limit)
     _creds, drive = open_drive(write=False)
-    rows: list[dict] = []
-    token = None
-    while len(rows) < cap:
-        page_size = min(100, cap - len(rows))
-        response = services.execute(
-            drive.files().list(
-                q=query,
-                pageSize=page_size,
-                pageToken=token,
-                orderBy="modifiedTime desc",
-                fields=LIST_FIELDS,
-                corpora="allDrives",
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
-            )
-        )
-        for meta in response.get("files") or []:
-            rows.append(file_row(meta))
-            if len(rows) >= cap:
-                break
-        token = response.get("nextPageToken")
-        if not token:
-            break
-    return rows, drive
+    _, workspace = active()
+    target = workspace.get("folder")
+    if recursive and not target:
+        raise GdocsError("recursive search needs an active workspace")
+    if target:
+        parent = folders.get(drive, target)
+        identifiers = folders.descendants(drive, parent) if recursive else [parent["id"]]
+        drive_id = parent.get("driveId")
+    else:
+        identifiers = [None]; drive_id = None
+    rows = []
+    for identifier in identifiers:
+        scoped = query
+        if identifier:
+            from gdocs.driveq import escape_drive_string
+            scoped += f" and '{escape_drive_string(identifier)}' in parents"
+        rows.extend(folders.query(drive, scoped, FILE_FIELDS, cap, drive_id))
+    rows.sort(key=lambda r: r.get("modifiedTime", ""), reverse=True)
+    return [file_row(r) for r in rows[:cap]], drive
 
 
 def _snippet_cap(value: int) -> int:
@@ -357,7 +350,7 @@ def create_file(kind: str, name: str) -> dict:
     _creds, drive = open_drive(write=True)
     created = services.execute(
         drive.files().create(
-            body={"name": title, "mimeType": KIND_MIME[kind]},
+            body={"name": title, "mimeType": KIND_MIME[kind], **_creation_parents(drive)},
             fields=FILE_FIELDS,
             supportsAllDrives=True,
         )
@@ -389,3 +382,8 @@ def abandon(file_id: str, exc: BaseException) -> NoReturn:
     except Exception:
         raise GdocsError(f"{exc}; leftover file {file_id}") from None
     raise exc from None
+
+
+def _creation_parents(drive):
+    from gdocs.folders import creation_parents
+    return creation_parents(drive)
