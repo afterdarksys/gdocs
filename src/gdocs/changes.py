@@ -33,8 +33,10 @@ def path_for(snapshot, name):
 def save(snapshot, name):
     path = path_for(snapshot, name)
     payload = dict(snapshot, collectedAt=datetime.now(timezone.utc).isoformat())
-    prepare_output(path, force=True)
-    atomic_write(path, lambda f: f.write(json.dumps(payload, ensure_ascii=False).encode()))
+    from gdocs.automation import operation_lock
+    with operation_lock(path):
+        prepare_output(path, force=True)
+        atomic_write(path, lambda f: f.write(json.dumps(payload, ensure_ascii=False).encode()))
     return {'baseline': name, 'id': snapshot['id'], 'saved': str(path)}
 
 def keyed(records, key):

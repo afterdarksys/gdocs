@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_recovery(nouns, common)
     register_reviews(nouns, common)
     register_folders(nouns, common)
     register_profiles(nouns, common)
@@ -213,3 +214,27 @@ def mark_review(a):
 def read_suggestions(a):
     from gdocs.reviews import suggestions
     return suggestions(a.target,a.view)
+
+
+def register_recovery(nouns, common):
+    root = nouns.add_parser('operations'); verbs = root.add_subparsers(dest='operation_action', required=True)
+    p = leaf(verbs,'list',common,operation_command)
+    p.add_argument('--status',choices=['started','completed','not-applied','archived'])
+    p = leaf(verbs,'inspect',common,operation_command); p.add_argument('operation_id')
+    p = leaf(verbs,'reconcile',common,operation_command); p.add_argument('operation_id')
+    p.add_argument('--outcome',choices=['completed','not-applied'],required=True)
+    p.add_argument('--note',required=True); p.add_argument('--result')
+    root = nouns.add_parser('retention'); verbs = root.add_subparsers(dest='retention_action',required=True)
+    p = leaf(verbs,'prune',common,prune_retention)
+    p.add_argument('--snapshots-days',type=int); p.add_argument('--receipts-days',type=int)
+    p.add_argument('--operations-days',type=int); p.add_argument('--apply',action='store_true')
+
+def operation_command(a):
+    from gdocs import automation
+    if a.operation_action == 'list': return automation.listing(a.status)
+    if a.operation_action == 'inspect': return automation.inspect(a.operation_id)
+    return automation.reconcile(a.operation_id,a.outcome,a.note,a.result)
+
+def prune_retention(a):
+    from gdocs.retention import prune
+    return prune(a.snapshots_days,a.receipts_days,a.operations_days,a.apply)

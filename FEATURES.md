@@ -157,3 +157,32 @@ accepted, or heading-level differences plus suggestion metadata (including style
 suggestions). Views are labeled and revision mismatches fail. Ordinary document
 reads now explicitly exclude suggestions; index-based writes use inline suggestion
 indexes. Suggestion acceptance/rejection is not performed by these commands.
+
+## CI recovery and retention
+
+`gdocs operations list --status started` finds uncertain operations.
+`gdocs operations inspect OPERATION_ID` shows status, context, errors and results.
+After independently checking remote state, record your conclusion with either:
+
+```
+gdocs operations reconcile JOB --outcome completed --result verified-result.json --note "Verified document ID against the job output"
+gdocs operations reconcile JOB --outcome not-applied --note "Verified no document was created"
+```
+
+These commands record an operator assertion, not an automatic remote verification.
+They never rerun a write. Completed reconciliation requires a JSON result for future
+replays; not-applied reconciliation keeps the old ID reserved and requires a new ID
+for an intentional retry. Active operations hold an OS file lock, preventing concurrent
+execution, reconciliation, or compaction. Operation fingerprints now bind arguments
+to profile, workspace/aliases and authentication configuration. Older journals without
+that context remain inspectable but are not replayed automatically.
+
+`gdocs retention prune --snapshots-days 30 --receipts-days 30 --operations-days 90`
+previews changes; add `--apply` to execute. Snapshots expire by collection timestamp.
+Managed receipts under the active profile expire by completion/reconciliation time;
+external receipt exports and evidence packages are untouched. Completed operations
+are compacted to archived records retaining their ID, fingerprint and completion time.
+Their result payloads are removed; rerunning an archived ID fails without executing.
+Uncertain and not-applied operations, credentials, review acknowledgements, and lock
+files are retained. Locked or concurrently changed state is skipped. Keep operation
+records on persistent local storage; this is not a distributed execution lock.
