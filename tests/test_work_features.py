@@ -20,3 +20,20 @@ def test_preferences(tmp_path, monkeypatch):
     save({'output': 'plain'})
     assert choose_output(None, True) == 'plain'
     assert choose_output('json', True) == 'json'
+
+def test_changes_detect_records_and_preserve_baseline(tmp_path, monkeypatch):
+    from gdocs.changes import compare, save, review
+    monkeypatch.setenv('GDOCS_CONFIG_DIR', str(tmp_path))
+    old = {'id':'x', 'kind':'sheet', 'key':'id', 'content':[{'id':'a','owner':'one'}]}
+    new = dict(old, content=[{'id':'a','owner':'two'}, {'id':'b','owner':'one'}])
+    save(old, 'last-review')
+    assert review(new, 'last-review')['summary'] == {'added':1,'removed':0,'changed':1}
+    assert review(new, 'last-review') == compare(old, new)
+    with pytest.raises(GdocsError): compare(old, dict(new, content=[{'id':'a'},{'id':'a'}]))
+
+def test_heading_changes():
+    from gdocs.changes import compare
+    old = {'id':'x','kind':'doc','content':'# A\nsame\n# B\nold'}
+    result = compare(old, dict(old,content='# A\nsame\n# B\nnew'))
+    assert result['summary']['changed'] == 1
+    assert result['changed'][0]['item'] == 'B [1]'
