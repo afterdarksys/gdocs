@@ -34,3 +34,21 @@ unchanged; empty strings clear cells. Other columns, including formulas, survive
 Reruns update existing keys rather than appending duplicates. A second read detects
 changes during planning, but Sheets has no compare-and-swap here: serialize
 writers to this tab to avoid a race between the final read and write.
+
+## Report templates and Markdown
+
+`gdocs report render security-weekly --data results.json --name "Weekly security"
+--preview` renders Markdown and HTML locally. Remove preview to publish a Google
+Doc with headings, lists, links, tables and code formatting via HTML conversion.
+Built-ins: `security-weekly`, `threat-model`, `incident`, `architecture-review`.
+A template can also be a Markdown path. Placeholders use `{{field}}`; missing data
+fails, and inserted data is Markdown (not executable template code). Raw HTML is
+escaped. Inspect built-in fields with `src/gdocs/reports.py`.
+
+Use `--into FILE --section "Automation results"` instead of `--name` to replace
+only the content under one existing heading, including its subsections. Other
+sections and the selected heading remain intact. Section writes use a revision
+precondition and support headings, lists, emphasis, links and code. Tables are
+supported for new reports but explicitly refused in section updates. Preview
+section updates reads the document but does not write. Nested list indentation
+and image embedding are not preserved in section updates; image alt text remains.

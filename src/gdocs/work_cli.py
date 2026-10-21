@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_reports(nouns, common)
     register_comments(nouns, common)
     register_changes(nouns, common)
     p = leaf(nouns, 'config', common, configure)
@@ -74,3 +75,15 @@ def run_comments(a):
 def upsert_sheet(a):
     from gdocs.upsert import run
     return run(a.target, a.json_path, a.key, [c.strip() for c in a.columns.split(',')], a.tab, a.preview)
+
+
+def register_reports(nouns, common):
+    root = nouns.add_parser('report'); verbs = root.add_subparsers(dest='report_action',required=True)
+    p = leaf(verbs,'render',common,render_report)
+    p.add_argument('template'); p.add_argument('--data',required=True)
+    p.add_argument('--name'); p.add_argument('--into'); p.add_argument('--section')
+    p.add_argument('--preview',action='store_true')
+
+def render_report(a):
+    from gdocs.reports import run
+    return run(a.template,a.data,a.name,a.into,a.section,a.preview)

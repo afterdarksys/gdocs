@@ -63,3 +63,22 @@ def test_upsert_preserves_human_columns_and_is_repeatable():
     assert plan(after, records, 'id', ['severity'])['changes'] == []
     with pytest.raises(GdocsError): plan(grid, [{'id':'a','notes':'overwrite'}], 'id', ['severity'])
     with pytest.raises(GdocsError): plan(grid, [{'id':'a'}, {'id':'a'}], 'id', ['severity'])
+
+def test_report_strict_template_and_rich_markdown():
+    from gdocs.reports import render, parser, compile_section
+    with pytest.raises(GdocsError): render('{{missing}}', {})
+    assert render('{{summary}}', {'summary':'{{literal}}'}) == '{{literal}}'
+    rich = parser().render('# Title\n\n|A|B|\n|-|-|\n|1|2|\n\n```\ncode\n```')
+    assert '<h1>' in rich and '<table>' in rich and '<code>' in rich
+    requests = compile_section('# Hi 😀\n\n[Link](https://example.com) and **bold**', 10, 'tab')
+    assert requests[0]['insertText']['text'] == 'Hi 😀\nLink and bold\n'
+    assert requests[0]['insertText']['location']['tabId'] == 'tab'
+    assert any(r.get('updateTextStyle',{}).get('textStyle',{}).get('link') for r in requests)
+    with pytest.raises(GdocsError): compile_section('|A|B|\n|-|-|\n|1|2|',1)
+
+def test_section_bounds_preserve_neighbor():
+    from gdocs.reports import section_range
+    def p(start,end,text,style='NORMAL_TEXT'):
+        return {'startIndex':start,'endIndex':end,'paragraph':{'paragraphStyle':{'namedStyleType':style},'elements':[{'textRun':{'content':text+'\n'}}]}}
+    doc={'body':{'content':[p(1,9,'Managed','HEADING_1'),p(9,14,'old'),p(14,20,'Human','HEADING_1'),p(20,26,'notes')]}}
+    assert section_range(doc,'Managed') == (None,9,14)
