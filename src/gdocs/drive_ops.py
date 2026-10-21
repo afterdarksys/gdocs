@@ -79,6 +79,8 @@ def resolve(drive, kind: str, target: str) -> dict:
 
     from gdocs import services
 
+    from gdocs.workspaces import alias_target, scope
+    target = alias_target(target, kind)
     mime = KIND_MIME[kind]
     file_id = extract_id(target)
     if file_id:
@@ -88,7 +90,7 @@ def resolve(drive, kind: str, target: str) -> dict:
         if meta.get("mimeType") != mime:
             raise GdocsError("file is the wrong type")
         return meta
-    query = build_list_query(kind=kind, name_equals=target)
+    query = scope(build_list_query(kind=kind, name_equals=target))
     response = services.execute(
         drive.files().list(
             q=query,
@@ -181,6 +183,8 @@ def import_file(kind: str, path: str, *, name: str | None = None) -> dict:
 def _collect(query: str, limit: int | None):
     from gdocs import services
 
+    from gdocs.workspaces import scope
+    query = scope(query)
     cap = list_limit(limit)
     _creds, drive = open_drive(write=False)
     rows: list[dict] = []

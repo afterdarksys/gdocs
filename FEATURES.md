@@ -82,3 +82,23 @@ hashes. Collection fails if source metadata changes during an export. Sources ar
 collected sequentially, not as a transaction. Partial packages are removed.
 `gdocs evidence verify ./evidence-123` detects missing or altered exported files.
 The manifest is unsigned: hashes verify integrity relative to it, not provenance.
+
+## Workspaces and aliases
+
+```
+gdocs workspace create security --folder FOLDER_ID_OR_URL
+gdocs workspace use security
+gdocs alias set incident-runbook DOCUMENT_ID
+gdocs alias set risk-register SHEET_ID --kind sheet
+gdocs doc read incident-runbook --section Containment
+gdocs workspace recent --limit 10
+```
+
+Aliases are verified when set and checked for file type when used. `@alias` forces
+alias interpretation; bare aliases also work. List/remove with `gdocs alias list`
+and `gdocs alias remove NAME`. `workspace list` shows available workspaces;
+`workspace use none` disables scoping. `GDOCS_WORKSPACE=NAME` overrides the saved
+selection for a process. Lists, searches, and exact-name lookups are scoped to
+immediate children of the workspace folder (not recursive descendants). IDs,
+URLs and aliases still address their explicit files. This is a navigation scope,
+not an authorization boundary. Creating files does not move them into the folder.

@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_workspaces(nouns, common)
     register_evidence(nouns, common)
     register_automation(nouns, common)
     register_reports(nouns, common)
@@ -117,3 +118,30 @@ def collect_evidence(a):
 def verify_evidence(a):
     from gdocs.evidence import verify
     return verify(a.directory)
+
+
+def register_workspaces(nouns,common):
+    root=nouns.add_parser('workspace'); verbs=root.add_subparsers(dest='workspace_action',required=True)
+    p=leaf(verbs,'create',common,workspace_command); p.add_argument('name'); p.add_argument('--folder',required=True)
+    p=leaf(verbs,'use',common,workspace_command); p.add_argument('name')
+    leaf(verbs,'list',common,workspace_command)
+    leaf(verbs,'recent',common,workspace_command)
+    root=nouns.add_parser('alias'); verbs=root.add_subparsers(dest='alias_action',required=True)
+    p=leaf(verbs,'set',common,alias_command); p.add_argument('name'); p.add_argument('target'); p.add_argument('--kind',choices=['doc','sheet','present'],default='doc')
+    p=leaf(verbs,'remove',common,alias_command); p.add_argument('name')
+    leaf(verbs,'list',common,alias_command)
+
+def workspace_command(a):
+    from gdocs import workspaces as w
+    if a.workspace_action == 'create': return w.create(a.name,a.folder)
+    if a.workspace_action == 'use': return w.use(a.name)
+    if a.workspace_action == 'recent': return w.recent(a.limit)
+    data=w.load(); active,_=w.active(data)
+    return [{'workspace':name,'folder':v['folder'],'active':name == active} for name,v in data.get('workspaces',{}).items()]
+
+def alias_command(a):
+    from gdocs import workspaces as w
+    if a.alias_action == 'set': return w.set_alias(a.name,a.target,a.kind)
+    if a.alias_action == 'remove': return w.remove_alias(a.name)
+    _, workspace=w.active()
+    return [{'alias':name,**v} for name,v in workspace.get('aliases',{}).items()]
