@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_comments(nouns, common)
     register_changes(nouns, common)
     p = leaf(nouns, 'config', common, configure)
     p.add_argument('setting', choices=['output'])
@@ -49,3 +50,18 @@ def run_changes(a):
     from gdocs.changes import capture, save, review
     current = capture(a.kind, a.target, a.tab, a.key)
     return save(current, a.baseline) if a.change_action == 'snapshot' else review(current, a.baseline, a.summary)
+
+
+def register_comments(nouns, common):
+    root = nouns.add_parser('comments')
+    verbs = root.add_subparsers(dest='comment_action', required=True)
+    for action in ('list','add','reply','resolve'):
+        p = leaf(verbs, action, common, run_comments)
+        p.add_argument('target'); p.add_argument('--kind', choices=['doc','sheet','present'], default='doc')
+        if action in ('reply','resolve'): p.add_argument('comment_id')
+        if action in ('add','reply'): p.add_argument('text')
+        if action == 'list': p.add_argument('--unresolved', action='store_true')
+
+def run_comments(a):
+    from gdocs.comments import run
+    return run(a.target, a.kind, a.comment_action, getattr(a,'comment_id',None), getattr(a,'text',None), getattr(a,'unresolved',False))

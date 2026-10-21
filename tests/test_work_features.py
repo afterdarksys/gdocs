@@ -37,3 +37,17 @@ def test_heading_changes():
     result = compare(old, dict(old,content='# A\nsame\n# B\nnew'))
     assert result['summary']['changed'] == 1
     assert result['changed'][0]['item'] == 'B [1]'
+
+def test_comments_pagination_and_resolve(monkeypatch):
+    from gdocs import comments
+    from unittest.mock import Mock
+    drive = Mock()
+    monkeypatch.setattr(comments, 'open_drive', lambda **kw: (None,drive))
+    monkeypatch.setattr(comments, 'resolve', lambda *a: {'id':'file'})
+    drive.comments.return_value.list.return_value.execute.side_effect = [
+        {'comments':[{'id':'1','resolved':True}], 'nextPageToken':'next'},
+        {'comments':[{'id':'2','resolved':False,'quotedFileContent':{'value':'context'}}]}]
+    assert comments.run('file', unresolved=True)[0]['id'] == '2'
+    assert drive.comments.return_value.list.call_args.kwargs['pageToken'] == 'next'
+    comments.run('file', action='resolve', comment_id='2')
+    assert drive.replies.return_value.create.call_args.kwargs['body'] == {'action':'resolve'}
