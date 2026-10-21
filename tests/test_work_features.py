@@ -82,3 +82,27 @@ def test_section_bounds_preserve_neighbor():
         return {'startIndex':start,'endIndex':end,'paragraph':{'paragraphStyle':{'namedStyleType':style},'elements':[{'textRun':{'content':text+'\n'}}]}}
     doc={'body':{'content':[p(1,9,'Managed','HEADING_1'),p(9,14,'old'),p(14,20,'Human','HEADING_1'),p(20,26,'notes')]}}
     assert section_range(doc,'Managed') == (None,9,14)
+
+def test_operation_replay_and_uncertain_failure(tmp_path, monkeypatch):
+    from gdocs import automation, cli
+    from argparse import Namespace
+    from unittest.mock import Mock
+    monkeypatch.setenv('GDOCS_CONFIG_DIR',str(tmp_path))
+    handler=Mock(return_value={'id':'created'})
+    parser=Mock(); parser.parse_args.return_value=Namespace(func=handler)
+    monkeypatch.setattr(cli,'build_parser',lambda:parser)
+    automation.run(['doc','create'],'one')
+    assert automation.run(['doc','create'],'one')['replayed']
+    assert handler.call_count == 1
+    with pytest.raises(GdocsError): automation.run(['doc','other'],'one')
+    handler.side_effect=RuntimeError('connection lost')
+    with pytest.raises(RuntimeError): automation.run(['doc','create'],'two')
+    with pytest.raises(GdocsError,match='uncertain'): automation.run(['doc','create'],'two')
+    assert handler.call_count == 2
+
+def test_ci_error_json(monkeypatch,capsys):
+    from gdocs.errors import report_exception
+    import json
+    monkeypatch.setenv('GDOCS_CI','1')
+    assert report_exception(GdocsError('conflict',3)) == 3
+    assert json.loads(capsys.readouterr().err)['error']['exitCode'] == 3

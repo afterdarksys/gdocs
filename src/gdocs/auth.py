@@ -253,6 +253,10 @@ def logout() -> None:
 def load_credentials():
     """Return ``(credentials, storage)``. Refreshes and stores when needed."""
 
+    if os.environ.get("GDOCS_AUTH") == "adc":
+        import google.auth
+        creds, _project = google.auth.default(scopes=[SCOPE_DRIVE])
+        return creds, "application-default"
     info, storage = load_stored()
     creds = _credentials_from_info(info)
     if not getattr(creds, "refresh_token", None):

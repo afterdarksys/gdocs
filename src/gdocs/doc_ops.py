@@ -37,7 +37,9 @@ def replace_text(target: str, old: str, new: str) -> dict:
     request = replace_request(old, new)
     creds, drive = open_drive(write=True)
     meta = resolve(drive, "doc", target)
-    response = _batch(creds, meta["id"], [request])
+    from gdocs import services
+    loaded = services.execute(_documents(creds).documents().get(documentId=meta["id"], includeTabsContent=True))
+    response = _batch(creds, meta["id"], [request], revision=_revision(loaded))
     changed = require_text_changes(response)
     return {"id": meta["id"], "occurrencesChanged": changed}
 
@@ -54,7 +56,7 @@ def append_text(target: str, text: str) -> dict:
 
     loaded = services.execute(document)
     location = append_location(loaded)
-    _batch(creds, meta["id"], [{"insertText": {"location": location, "text": text}}])
+    _batch(creds, meta["id"], [{"insertText": {"location": location, "text": text}}], revision=_revision(loaded))
     return {"id": meta["id"], "appended": len(text)}
 
 
@@ -67,11 +69,11 @@ def _load(target: str, *, write: bool) -> dict:
     return services.execute(request)
 
 
-def _batch(creds, document_id: str, requests: list[dict]) -> dict:
+def _batch(creds, document_id: str, requests: list[dict], revision=None) -> dict:
     from gdocs import services
 
     return services.execute(
-        _documents(creds).documents().batchUpdate(documentId=document_id, body={"requests": requests})
+        _documents(creds).documents().batchUpdate(documentId=document_id, body={"requests": requests, **({"writeControl": {"requiredRevisionId": revision}} if revision else {})})
     )
 
 
@@ -105,3 +107,10 @@ def _documents(creds):
     from gdocs import services
 
     return services.build("docs", "v1", creds)
+
+
+def _revision(document):
+    revision = document.get("revisionId")
+    if not revision:
+        raise GdocsError("document revision unavailable; refusing unguarded edit", 3)
+    return revision

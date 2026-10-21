@@ -52,3 +52,23 @@ precondition and support headings, lists, emphasis, links and code. Tables are
 supported for new reports but explicitly refused in section updates. Preview
 section updates reads the document but does not write. Nested list indentation
 and image embedding are not preserved in section updates; image alt text remains.
+
+## CI execution
+
+Set `GDOCS_CI=1` for JSON runtime errors on stderr and disabled interactive login.
+Use `GDOCS_AUTH=adc` for Application Default Credentials, including workload
+identity configurations through `GOOGLE_APPLICATION_CREDENTIALS`. The identity
+must have access to the files. Otherwise existing saved OAuth credentials work.
+Exit codes: 1 general failure, 2 argument error, 3 conflict/uncertain replay,
+4 authentication/permission failure, 5 transient API failure, 130 interruption.
+Argument-parser errors retain standard argparse text. No writes are auto-retried.
+
+`gdocs run --id pipeline-123-report --receipt receipt.json -- doc create --name Report`
+records an operation in the private config directory. Repeating the same ID and
+arguments replays the saved result without writing again. Changed arguments fail.
+An interrupted/failed operation stays uncertain and requires checking remote state
+before deliberately choosing a new ID. Persist the config directory between CI
+jobs; deduplication is local, not distributed. Receipts contain command results,
+which can include document contents. `run --preview` validates arguments only;
+use upsert/report previews for actual planned remote edits. Docs replace/append
+and report section updates now require the revision observed before the write.

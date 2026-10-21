@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_automation(nouns, common)
     register_reports(nouns, common)
     register_comments(nouns, common)
     register_changes(nouns, common)
@@ -87,3 +88,15 @@ def register_reports(nouns, common):
 def render_report(a):
     from gdocs.reports import run
     return run(a.template,a.data,a.name,a.into,a.section,a.preview)
+
+
+def register_automation(nouns, common):
+    import argparse
+    p = leaf(nouns,'run',common,run_automation)
+    p.add_argument('--id',dest='operation_id',required=True)
+    p.add_argument('--receipt'); p.add_argument('--preview',action='store_true')
+    p.add_argument('command',nargs=argparse.REMAINDER)
+
+def run_automation(a):
+    from gdocs.automation import run
+    return run(a.command,a.operation_id,a.receipt,a.preview)

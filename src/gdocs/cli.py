@@ -246,6 +246,9 @@ def main(argv: list[str] | None = None) -> int:
             return code
         return 2
     try:
+        import os
+        if os.environ.get("GDOCS_CI") == "1" and args.noun in ("login", "setup"):
+            raise GdocsError("interactive authentication is disabled in CI; configure ADC or stored credentials", 4)
         result = args.func(args)
         _show(result, args)
     except SystemExit:

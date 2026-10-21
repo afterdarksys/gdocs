@@ -57,4 +57,4 @@ def _from_http(exc: BaseException):
     text = redact(str(reason)).replace("\n", " ").strip()
     if len(text) > 300:
         text = text[:300]
-    return GdocsError(f"Google API error {status}: {text}")
+    return GdocsError(f"Google API error {status}: {text}", {401: 4, 403: 4, 409: 3, 412: 3, 429: 5, 500: 5, 502: 5, 503: 5, 504: 5}.get(status, 1))

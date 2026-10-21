@@ -28,6 +28,11 @@ def report_exception(exc: BaseException) -> int:
 
     if isinstance(exc, KeyboardInterrupt):
         return 130
+    if os.environ.get("GDOCS_CI") == "1":
+        import json
+        code = exc.exit_code if isinstance(exc, GdocsError) else 1
+        print(json.dumps({"error": {"message": redact(str(exc)), "exitCode": code, "type": type(exc).__name__}}), file=sys.stderr)
+        return code or 1
     if isinstance(exc, GdocsError):
         print(redact(str(exc)), file=sys.stderr)
         return exc.exit_code or 1
