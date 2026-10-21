@@ -99,9 +99,10 @@ alias interpretation; bare aliases also work. List/remove with `gdocs alias list
 and `gdocs alias remove NAME`. `workspace list` shows available workspaces;
 `workspace use none` disables scoping. `GDOCS_WORKSPACE=NAME` overrides the saved
 selection for a process. Lists, searches, and exact-name lookups are scoped to
-immediate children of the workspace folder (not recursive descendants). IDs,
+immediate children by default; list/find/search accept `--recursive`. IDs,
 URLs and aliases still address their explicit files. This is a navigation scope,
-not an authorization boundary. Creating files does not move them into the folder.
+not an authorization boundary. New editor files, imports and reports are created
+in the workspace folder (see Folders and shared drives below).
 
 ## Account profiles
 

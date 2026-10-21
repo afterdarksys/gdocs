@@ -67,3 +67,9 @@ def test_move_preview_never_writes(monkeypatch):
 def test_recursive_folder_walk_deduplicates_cycles(monkeypatch):
     monkeypatch.setattr(folders,'query',lambda d,q,*a,**k:[{'id':'child'}] if "'root'" in q else [{'id':'root'}])
     assert folders.descendants(Mock(),{'id':'root'}) == ['root','child']
+
+
+def test_name_resolution_refuses_incomplete_search():
+    drive=Mock()
+    drive.files.return_value.list.return_value.execute.return_value={'files':[{'id':'wrong'}],'incompleteSearch':True}
+    with pytest.raises(GdocsError,match='incomplete'): drive_ops.resolve(drive,'doc','Runbook')

@@ -95,20 +95,14 @@ def resolve(drive, kind: str, target: str) -> dict:
             raise GdocsError("file is the wrong type")
         return meta
     query = scope(build_list_query(kind=kind, name_equals=target))
-    response = services.execute(
-        drive.files().list(
-            q=query,
-            pageSize=2,
-            fields=LIST_FIELDS,
-            corpora="allDrives",
-            supportsAllDrives=True,
-            includeItemsFromAllDrives=True,
-        )
-    )
-    files = response.get("files") or []
+    from gdocs import folders
+    from gdocs.workspaces import active
+    _, workspace = active()
+    parent = folders.get(drive, workspace["folder"]) if workspace.get("folder") else {}
+    files = folders.query(drive, query, FILE_FIELDS, 2, parent.get("driveId"))
     if not files:
         raise GdocsError("file was not found")
-    if len(files) > 1 or response.get("nextPageToken"):
+    if len(files) > 1:
         raise GdocsError("file name matches more than one file")
     return files[0]
 
