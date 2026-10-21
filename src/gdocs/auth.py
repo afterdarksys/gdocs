@@ -49,10 +49,8 @@ _TOKEN_KEYS = (
 
 
 def config_dir() -> Path:
-    override = os.environ.get("GDOCS_CONFIG_DIR")
-    if override:
-        return Path(override)
-    return Path.home() / ".config" / "gdocs"
+    from gdocs.profiles import directory
+    return directory()
 
 
 def token_path() -> Path:
@@ -433,7 +431,7 @@ def _keyring_get() -> str | None:
     import keyring
 
     try:
-        return keyring.get_password(KEYRING_SERVICE, KEYRING_ACCOUNT)
+        return keyring.get_password(KEYRING_SERVICE, _profile_account())
     except Exception:
         return None
 
@@ -441,14 +439,14 @@ def _keyring_get() -> str | None:
 def _keyring_set(payload: str) -> None:
     import keyring
 
-    keyring.set_password(KEYRING_SERVICE, KEYRING_ACCOUNT, payload)
+    keyring.set_password(KEYRING_SERVICE, _profile_account(), payload)
 
 
 def _keyring_delete() -> None:
     import keyring
 
     try:
-        keyring.delete_password(KEYRING_SERVICE, KEYRING_ACCOUNT)
+        keyring.delete_password(KEYRING_SERVICE, _profile_account())
     except Exception:
         raise GdocsError("could not delete the keychain token") from None
 
@@ -527,3 +525,8 @@ def _loopback_uri(uri: str) -> bool:
         return False
     host = (parts.hostname or "").lower().rstrip(".")
     return host in {"localhost", "127.0.0.1"}
+
+
+def _profile_account():
+    from gdocs.profiles import keyring_account
+    return keyring_account()

@@ -102,3 +102,15 @@ selection for a process. Lists, searches, and exact-name lookups are scoped to
 immediate children of the workspace folder (not recursive descendants). IDs,
 URLs and aliases still address their explicit files. This is a navigation scope,
 not an authorization boundary. Creating files does not move them into the folder.
+
+## Account profiles
+
+`gdocs profile create work --email engineer@example.com` creates isolated settings.
+`gdocs profile use work` selects it; then run the normal OAuth login. Use
+`GDOCS_PROFILE=work gdocs ...` to select a profile explicitly in a script.
+`profile list` shows selection. `profile use default` restores the original token,
+keychain entry, aliases and settings without migration. Named profiles isolate
+OAuth keychain entries, fallback token files, workspaces, snapshots and operations.
+An optional expected email is verified against Drive before named-profile writes;
+the account, profile and workspace are printed to stderr before writing. ADC is
+still selected by the process environment; profiles do not change its identity.

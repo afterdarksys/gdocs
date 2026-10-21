@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_profiles(nouns, common)
     register_workspaces(nouns, common)
     register_evidence(nouns, common)
     register_automation(nouns, common)
@@ -145,3 +146,18 @@ def alias_command(a):
     if a.alias_action == 'remove': return w.remove_alias(a.name)
     _, workspace=w.active()
     return [{'alias':name,**v} for name,v in workspace.get('aliases',{}).items()]
+
+
+def register_profiles(nouns, common):
+    root = nouns.add_parser('profile')
+    verbs = root.add_subparsers(dest='profile_action', required=True)
+    p = leaf(verbs, 'create', common, profile_command)
+    p.add_argument('name'); p.add_argument('--email')
+    p = leaf(verbs, 'use', common, profile_command); p.add_argument('name')
+    leaf(verbs, 'list', common, profile_command)
+
+def profile_command(a):
+    from gdocs import profiles
+    if a.profile_action == 'create': return profiles.create(a.name, a.email)
+    if a.profile_action == 'use': return profiles.use(a.name)
+    return profiles.listing()

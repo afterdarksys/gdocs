@@ -52,7 +52,11 @@ def open_drive(*, write: bool):
     creds, _storage = load_credentials()
     if write:
         assert_write_scope(creds)
-    return creds, services.build("drive", "v3", creds)
+    drive = services.build("drive", "v3", creds)
+    if write:
+        from gdocs.profiles import write_context
+        write_context(drive)
+    return creds, drive
 
 
 def list_files(kind: str, *, name_contains: str | None = None, tag: str | None = None, starred: bool = False, limit: int | None = None) -> list[dict]:
