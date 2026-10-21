@@ -4,16 +4,48 @@ Command line for Google Docs, Sheets, and Slides. Listing, search, sharing, tags
 
 ## Setup
 
-1. Create a Google Cloud project.
-2. Enable the Drive, Docs, Sheets, and Slides APIs.
-3. On the OAuth consent screen, choose External and add your Google account as a test user.
-4. Create an OAuth client of type Desktop and download its JSON file.
-5. Install and log in:
+To run directly from this checkout:
 
 ```bash
 uv sync
-gdocs login --client ~/Downloads/client_secret.json
+./bin/gdocs setup
+# Or sign in with an existing Desktop OAuth client:
+./bin/gdocs login --client ~/Downloads/client_secret.json
+./bin/gdocs status
 ```
+
+`bin/gdocs` uses the checkout's `.venv` when available, or the current
+`python3` environment otherwise (install the project dependencies there first).
+It works from any directory and through a symlink, while resolving command
+arguments such as client-file paths relative to your current directory.
+OAuth login opens your browser for consent; add `--readonly` for read-only
+access. Saved credentials are reused and refreshed by subsequent commands.
+
+Install from this checkout as a CLI tool, then run the setup wizard:
+
+```bash
+uv tool install --editable .
+uv tool update-shell
+# Restart your shell if uv updated PATH.
+gdocs setup
+```
+
+`gdocs` is then available from any directory without activating a virtual
+environment. The editable install picks up changes in this checkout; keep the
+checkout in place. For development only, `uv sync --extra dev` and
+`uv run gdocs <command>` also work.
+
+The wizard prompts through project creation, enabling the Drive, Docs, Sheets,
+and Slides APIs, consent-screen configuration, and downloading a Desktop OAuth
+client. It validates the file, asks whether to use read-only access, and opens
+Google sign-in. Cloud project configuration is completed in your browser; the
+wizard provides links and waits after each step. See Google's
+[credential setup guide](https://developers.google.com/workspace/guides/create-credentials).
+
+Already have a client file? Run `gdocs setup --client ~/Downloads/client_secret.json`.
+Add `--readonly` to request read-only access without the access-mode question.
+For login without terminal prompts, use
+`gdocs login --client ~/Downloads/client_secret.json` (browser consent still applies).
 
 A refresh token from an app that is still in testing expires after 7 days. Publishing the consent screen to Production keeps the token for personal use. Google then shows an unverified-app warning because the Drive scope is restricted. That warning is expected for a personal desktop client.
 

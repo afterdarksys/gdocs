@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Run the checkout's CLI, preferring its development virtual environment."""
+
+import os
+from pathlib import Path
+import sys
+
+
+root = Path(__file__).resolve().parent.parent
+venv = root / ".venv"
+python = venv / "bin" / "python"
+if python.is_file() and Path(sys.prefix).resolve() != venv.resolve():
+    os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
+
+sys.path.insert(0, str(root / "src"))
+
+from gdocs.cli import main
+
+raise SystemExit(main())

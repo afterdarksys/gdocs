@@ -28,6 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="Command line for Google Docs, Sheets, and Slides",
     )
     nouns = parser.add_subparsers(dest="noun", required=True)
+    setup = nouns.add_parser("setup", help="walk through Google Cloud setup and sign in")
+    setup.add_argument("--client", help="skip the guide and use this Desktop OAuth client JSON")
+    setup.add_argument("--readonly", action="store_true", help="request read-only access")
+    setup.set_defaults(func=_cmd_setup, kind=None)
     login = nouns.add_parser("login", help="store an OAuth refresh token")
     login.add_argument("--client", required=True, help="Desktop OAuth client JSON")
     login.add_argument("--readonly", action="store_true")
@@ -277,6 +281,12 @@ def _show(result, args) -> None:
         if "snippet" in row:
             columns.append("snippet")
     emit(result, getattr(args, "output", None), columns=columns)
+
+
+def _cmd_setup(args):
+    from gdocs.setup import run_setup
+
+    return run_setup(args.client, args.readonly)
 
 
 def _cmd_login(args):
