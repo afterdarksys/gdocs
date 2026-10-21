@@ -28,6 +28,10 @@ def read_doc(a):
     return read(a.target, a.section, a.outline)
 
 def register_sheet(verbs, common, tab):
+    p = leaf(verbs, 'upsert', common, upsert_sheet)
+    p.add_argument('target'); p.add_argument('--json', dest='json_path', required=True)
+    p.add_argument('--key', required=True); p.add_argument('--columns', required=True)
+    p.add_argument('--tab'); p.add_argument('--preview', action='store_true')
     p = leaf(verbs, 'read', common, read_sheet)
     p.add_argument('target'); p.add_argument('--tab')
     p.set_defaults(output='plain')
@@ -65,3 +69,8 @@ def register_comments(nouns, common):
 def run_comments(a):
     from gdocs.comments import run
     return run(a.target, a.kind, a.comment_action, getattr(a,'comment_id',None), getattr(a,'text',None), getattr(a,'unresolved',False))
+
+
+def upsert_sheet(a):
+    from gdocs.upsert import run
+    return run(a.target, a.json_path, a.key, [c.strip() for c in a.columns.split(',')], a.tab, a.preview)

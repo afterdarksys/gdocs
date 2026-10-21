@@ -23,3 +23,14 @@ context when supplied by Google, and replies. Use `comments add FILE "text"`,
 `comments reply FILE COMMENT_ID "text"`, or `comments resolve FILE COMMENT_ID`.
 `--kind sheet|present` selects other file types. New comments are file-level:
 Drive API anchors are not rendered as native inline anchors in Google editors.
+
+## Finding upserts
+
+`gdocs sheet upsert FILE --key finding_id --columns severity,last_seen,evidence
+--json findings.json --tab Findings --preview` shows individual cell changes.
+Omit `--preview` to apply. Input is an array of objects; keys must be nonempty
+strings. Only declared columns may appear besides the key. Missing fields stay
+unchanged; empty strings clear cells. Other columns, including formulas, survive.
+Reruns update existing keys rather than appending duplicates. A second read detects
+changes during planning, but Sheets has no compare-and-swap here: serialize
+writers to this tab to avoid a race between the final read and write.

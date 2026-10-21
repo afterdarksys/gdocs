@@ -51,3 +51,15 @@ def test_comments_pagination_and_resolve(monkeypatch):
     assert drive.comments.return_value.list.call_args.kwargs['pageToken'] == 'next'
     comments.run('file', action='resolve', comment_id='2')
     assert drive.replies.return_value.create.call_args.kwargs['body'] == {'action':'resolve'}
+
+def test_upsert_preserves_human_columns_and_is_repeatable():
+    from gdocs.upsert import plan
+    grid = [['id','severity','notes'], ['a','low','=A1']]
+    records = [{'id':'a','severity':'high'},{'id':'b','severity':'low'}]
+    result = plan(grid, records, 'id', ['severity'])
+    assert [c['cell'] for c in result['changes']] == ['B2','A3','B3']
+    assert all(c['column'] != 'notes' for c in result['changes'])
+    after = [['id','severity','notes'], ['a','high','=A1'], ['b','low']]
+    assert plan(after, records, 'id', ['severity'])['changes'] == []
+    with pytest.raises(GdocsError): plan(grid, [{'id':'a','notes':'overwrite'}], 'id', ['severity'])
+    with pytest.raises(GdocsError): plan(grid, [{'id':'a'}, {'id':'a'}], 'id', ['severity'])
