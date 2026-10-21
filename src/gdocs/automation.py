@@ -64,7 +64,7 @@ def receipt_copy(path, record, force=False):
 def run(argv, operation_id, receipt=None, preview=False):
     from gdocs.cli import build_parser
     if argv and argv[0] == '--': argv = argv[1:]
-    if not argv or argv[0] in ('run','login','setup','logout','config','workspace','alias','profile','operations','retention'):
+    if not argv or argv[0] in ('run','login','setup','logout','config','workspace','alias','profile','operations','retention','jira'):
         raise GdocsError('run requires a noninteractive document command')
     args = build_parser().parse_args(argv)
     path = operation_path(operation_id)

@@ -1,3 +1,3 @@
-include build.sh uv.lock FEATURES.md BUILDING.md
+include build.sh uv.lock FEATURES.md BUILDING.md JIRA.md
 recursive-include tests *.py
 recursive-include bin *

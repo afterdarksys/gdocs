@@ -2,6 +2,11 @@
 
 Command line for Google Docs, Sheets, and Slides. Listing, search, sharing, tags, import, and export go through Drive. Docs, Sheets, and Slides handle the file contents.
 
+For build/install/update commands, see [BUILDING.md](BUILDING.md). Accessible
+reading, profiles, workspaces, review and CI tools are documented in
+[FEATURES.md](FEATURES.md). For read-only Jira API troubleshooting, see
+[JIRA.md](JIRA.md).
+
 ## Setup
 
 To run directly from this checkout:

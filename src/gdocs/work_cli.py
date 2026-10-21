@@ -5,6 +5,8 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    from gdocs.jira_cli import register as register_jira
+    register_jira(nouns, common)
     register_recovery(nouns, common)
     register_reviews(nouns, common)
     register_folders(nouns, common)

@@ -258,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
             raise GdocsError("interactive authentication is disabled in CI; configure ADC or stored credentials", 4)
         result = args.func(args)
         _show(result, args)
+        return getattr(result, "exit_code", 0)
     except SystemExit:
         raise
     except BaseException as exc:
