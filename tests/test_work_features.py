@@ -106,3 +106,16 @@ def test_ci_error_json(monkeypatch,capsys):
     monkeypatch.setenv('GDOCS_CI','1')
     assert report_exception(GdocsError('conflict',3)) == 3
     assert json.loads(capsys.readouterr().err)['error']['exitCode'] == 3
+
+def test_evidence_detects_tampering_and_traversal(tmp_path):
+    from gdocs.evidence import verify
+    import hashlib,json
+    payload=b'evidence'; (tmp_path/'file.docx').write_bytes(payload)
+    manifest={'schemaVersion':1,'files':[{'path':'file.docx','sha256':hashlib.sha256(payload).hexdigest(),'bytes':len(payload)}]}
+    (tmp_path/'manifest.json').write_text(json.dumps(manifest))
+    assert verify(tmp_path)['verified']
+    (tmp_path/'file.docx').write_bytes(b'changed')
+    with pytest.raises(GdocsError,match='mismatch'): verify(tmp_path)
+    manifest['files'][0]['path']='../outside'
+    (tmp_path/'manifest.json').write_text(json.dumps(manifest))
+    with pytest.raises(GdocsError,match='path'): verify(tmp_path)

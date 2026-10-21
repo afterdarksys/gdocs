@@ -5,6 +5,7 @@ def leaf(verbs, name, common, handler):
     return p
 
 def register(nouns, common):
+    register_evidence(nouns, common)
     register_automation(nouns, common)
     register_reports(nouns, common)
     register_comments(nouns, common)
@@ -100,3 +101,19 @@ def register_automation(nouns, common):
 def run_automation(a):
     from gdocs.automation import run
     return run(a.command,a.operation_id,a.receipt,a.preview)
+
+
+def register_evidence(nouns,common):
+    root = nouns.add_parser('evidence'); verbs = root.add_subparsers(dest='evidence_action',required=True)
+    p = leaf(verbs,'collect',common,collect_evidence)
+    p.add_argument('dest'); p.add_argument('--source',action='append',required=True)
+    p.add_argument('--ticket',action='append',default=[]); p.add_argument('--control',action='append',default=[])
+    p = leaf(verbs,'verify',common,verify_evidence); p.add_argument('directory')
+
+def collect_evidence(a):
+    from gdocs.evidence import collect
+    return collect(a.source,a.dest,a.ticket,a.control)
+
+def verify_evidence(a):
+    from gdocs.evidence import verify
+    return verify(a.directory)

@@ -72,3 +72,13 @@ jobs; deduplication is local, not distributed. Receipts contain command results,
 which can include document contents. `run --preview` validates arguments only;
 use upsert/report previews for actual planned remote edits. Docs replace/append
 and report section updates now require the revision observed before the write.
+
+## Evidence packages
+
+`gdocs evidence collect ./evidence-123 --source doc:FILE --source sheet:FILE
+--ticket SEC-123 --control AC-2` exports DOCX/XLSX/PPTX files into a new directory,
+with a manifest of source IDs, versions, links, timestamps, byte lengths and SHA-256
+hashes. Collection fails if source metadata changes during an export. Sources are
+collected sequentially, not as a transaction. Partial packages are removed.
+`gdocs evidence verify ./evidence-123` detects missing or altered exported files.
+The manifest is unsigned: hashes verify integrity relative to it, not provenance.
